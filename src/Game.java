@@ -270,9 +270,9 @@ public class Game extends GameCore
         g.setColor(Color.white);
         g.fillRect(0, 0, getWidth(), getHeight());
 
-        for (int i = -1; i < 5; i++) {
+        for (int i = 0; i < 5; i++) {
             for (Sprite bg : backgrounds) {
-                bg.setOffsets((bg.getWidth()*i), 0);
+                bg.setOffsets((bg.getWidth() * i), 0);
                 bg.setScale(1, 1.18f);
                 bg.drawTransformed(g);
             }
@@ -343,19 +343,19 @@ public class Game extends GameCore
             player.setAnimation(runningAnim);
             bg1.setVelocityX(0.0001f);
             bg2.setVelocityX(0.001f);
-            bg3.setVelocityX(0.005f);
-            bg4.setVelocityX(0.01f);
-            bg5.setVelocityX(0.05f);
+            bg3.setVelocityX(0.01f);
+            bg4.setVelocityX(0.05f);
+            bg5.setVelocityX(0.1f);
         }
 
         if (moveRight) {
             player.moveRight();
             player.setAnimation(runningAnim);
-            bg1.setVelocityX(-0.005f);
-            bg2.setVelocityX(-0.005f);
-            bg3.setVelocityX(-0.009f);
+            bg1.setVelocityX(-0.0001f);
+            bg2.setVelocityX(-0.001f);
+            bg3.setVelocityX(-0.01f);
             bg4.setVelocityX(-0.05f);
-            bg5.setVelocityX(-0.05f);
+            bg5.setVelocityX(-0.1f);
         }
 
         if (player.getVelocityX() == 0) {

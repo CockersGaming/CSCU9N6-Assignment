@@ -312,7 +312,6 @@ public class Game extends GameCore
     	if (paused) return;
         // Make adjustments to the speed of the sprite due to gravity
         player.setVelocityY(player.getVelocityY() + (gravity * elapsed));
-        slime.setVelocityY(slime.getVelocityY() + (gravity * elapsed));
 
        	player.setAnimationSpeed(1.0f);
        	
@@ -325,6 +324,7 @@ public class Game extends GameCore
         flag.update(elapsed);
 
         for (Slime s: slimes) {
+            s.setVelocityY(s.getVelocityY() + (gravity * elapsed));
             s.update(elapsed);
         }
 

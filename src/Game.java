@@ -30,7 +30,7 @@ public class Game extends GameCore
     static int screenWidth = 512;
     static int screenHeight = 384;
     int xo = 0;
-    int yo = 0;
+    int yo = 16;
 
     float gravity = 0.001f;
     
@@ -41,7 +41,7 @@ public class Game extends GameCore
 
     // Game Resources
     // Player Animations
-    Animation standing, running, jumping, falling;
+    Animation standing, running, jumping, landing;
     // Item Animations
     Animation chestAnim, coinAnim, flagAnim, keyAnim, runeAnim;
     // Background Animations
@@ -90,22 +90,22 @@ public class Game extends GameCore
         // Load the tile map and print it out so we can check it is valid
         tmap.loadMap("maps", "map.txt");
         
-        setSize(tmap.getPixelWidth() / 3, tmap.getPixelHeight());
+        setSize(tmap.getPixelWidth() / 3, tmap.getPixelHeight() + 16);
         setVisible(true);
 
         // Player Animations
         {
             standing = new Animation();
-            standing.loadAnimationFromSheet("images/character/Idle.png", 8, 1, 90);
+            standing.loadAnimationFromSheet("images/character/stand.png", 5, 1, 90);
 
             running = new Animation();
-            running.loadAnimationFromSheet("images/character/Run.png", 8, 1, 90);
+            running.loadAnimationFromSheet("images/character/run.png", 8, 1, 90);
 
             jumping = new Animation();
-            jumping.loadAnimationFromSheet("images/character/Jump.png", 2, 1, 90);
+            jumping.loadAnimationFromSheet("images/character/jump.png", 3, 1, 90);
 
-            falling = new Animation();
-            falling.loadAnimationFromSheet("images/character/Fall.png", 2, 1, 90);
+            landing = new Animation();
+            landing.loadAnimationFromSheet("images/character/land.png", 2, 1, 90);
         }
 
         // Item Animations
@@ -254,7 +254,7 @@ public class Game extends GameCore
         g.fillRect(0, 0, getWidth(), getHeight());
 
         for (Sprite bg: backgrounds) {
-            bg.setOffsets(xo, 0);
+            bg.setOffsets(xo, yo);
             bg.setScale(1, 1.18f);
             bg.drawTransformed(g);
         }
@@ -302,12 +302,10 @@ public class Game extends GameCore
             bg5.setOffsets(-bg5.getWidth(), 0);
         }
 
-        if (((player.getX() + xo >= 350) && (player.getX() + xo <= tmap.getPixelWidth())) && (player.getVelocityX() > 0) && (player.getX() < tmap.getPixelWidth() - 370)) {
-            xo -= 4;
-        }
-
-        if ((((xo != 0) && (player.getX() >= 350) && player.getX() < tmap.getPixelWidth() - 350)) && player.getVelocityX() < 0) {
-            xo += 4;
+        if (player.getX() >= 500 && !(player.getX() >= (tmap.getPixelWidth() - 500))) {
+            xo = (int) (500 - player.getX());
+        } else {
+            xo = 0;
         }
 
         if (moveLeft) {
@@ -343,10 +341,11 @@ public class Game extends GameCore
             }
         }
 
-        if (!player.isOnGround() && player.getVelocityY() < 0)
+        if (!player.isOnGround() && player.getVelocityY() < 0) {
             player.setAnimation(jumping);
-        else if (!player.isOnGround() && player.getVelocityY() > 0)
-            player.setAnimation(falling);
+        } else if (!player.isOnGround() && player.getVelocityY() > 0){
+            player.setAnimation(landing);
+        }
 
         // Then check for any collisions that may have occurred
         handleScreenEdge(player, tmap, elapsed);
@@ -368,14 +367,6 @@ public class Game extends GameCore
         {
         	// Put the player back on the map 1 pixel above the bottom
         	s.setY(tmap.getPixelHeight() - s.getHeight());
-        }
-
-        if (s.getX() - s.getWidth() < 0) {
-            s.setX(tmap.getTileWidth() + s.getWidth());
-        }
-
-        if (s.getX() + s.getWidth() > tmap.getPixelWidth()) {
-            s.setX((tmap.getPixelWidth() - tmap.getTileWidth()) - s.getWidth());
         }
     }
 
@@ -466,16 +457,13 @@ public class Game extends GameCore
 
         if (tl != '.' || tr != '.' || bl != '.' || br != '.') // If it's not a dot (empty space), handle it
         {
-            boolean topRightFlag = Math.abs(trYDiff) >= Math.abs(trXDiff);
-            boolean topLeftFlag = Math.abs(tlYDiff) >= Math.abs(tlXDiff);
-
             // Left Collision
-            if ((tl != '.' && tr == '.' && topLeftFlag) || (bl != '.' && br == '.' && Math.abs(blXDiff) >= Math.abs(blYDiff))) {
+            if ((tl != '.' && tr == '.' && Math.abs(tlYDiff) >= Math.abs(tlXDiff)) || (bl != '.' && br == '.' && Math.abs(blXDiff) >= Math.abs(blYDiff))) {
                 s.setVelocityX(0);
                 s.setX(tmap.getTileXC(tlXTile, tlYTile) + tileWidth);
             }
             // Right
-            else if ((tr != '.' && tl == '.' && topRightFlag) || (br != '.' && bl == '.' && Math.abs(brXDiff) >= Math.abs(brYDiff)) ) {
+            else if ((tr != '.' && tl == '.' && Math.abs(trYDiff) >= Math.abs(trXDiff)) || (br != '.' && bl == '.' && Math.abs(brXDiff) >= Math.abs(brYDiff)) ) {
                 s.setVelocityX(0);
                 s.setX(tmap.getTileXC(trXTile, trYTile) - s.getWidth());
             }
@@ -486,9 +474,9 @@ public class Game extends GameCore
                 s.setIsOnGround(true);
             }
             // Top
-            else if ((tr != '.' && br == '.' && topRightFlag) || (tl != '.' && bl == '.' && topLeftFlag)) {
+            else if ((tr != '.' && br == '.' && Math.abs(trYDiff) >= Math.abs(trXDiff)) || (tl != '.' && bl == '.' && Math.abs(tlYDiff) >= Math.abs(tlXDiff))) {
                 s.setVelocityY(0);
-                s.setY((tmap.getTileYC(trXTile, trYTile) + tileHeight) + s.getHeight());
+                s.setY((tmap.getTileYC(trXTile, trYTile) +tileHeight) + s.getHeight());
             }
         }
     }

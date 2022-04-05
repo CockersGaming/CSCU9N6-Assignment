@@ -38,7 +38,7 @@ public class Game extends GameCore
     // Game state flags
     boolean paused;
     boolean moveLeft, moveRight, still;
-    boolean doubleJump;
+    boolean slimeMoveLeft, slimeMoveRight, slimeStill;
 
     // Game Resources
     // Player Animations
@@ -58,7 +58,8 @@ public class Game extends GameCore
     Sprite bg1, bg2, bg3, bg4, bg5; // backgrounds
 
     ArrayList<Sprite> backgrounds = new ArrayList<Sprite>();
-    ArrayList<Sprite> entities = new ArrayList<Sprite>();
+    ArrayList<Slime> slimes = new ArrayList<Slime>();
+    ArrayList<Coin> coins = new ArrayList<Coin>();
 
     TileMap tmap = new TileMap(); // Our tile map, note that we load it in init()
     
@@ -86,7 +87,9 @@ public class Game extends GameCore
         moveRight = false;
         moveLeft = false;
         still = true;
-        doubleJump = false;
+        slimeMoveRight = false;
+        slimeMoveLeft = true;
+        slimeStill = true;
 
         // Load the tile map and print it out so we can check it is valid
         tmap.loadMap("maps", "map.txt");
@@ -112,7 +115,7 @@ public class Game extends GameCore
         // Slime Animations
         {
             moveAnim = new Animation();
-            moveAnim.loadAnimationFromSheet("images/enemies/slime.png", 3, 1, 90);
+            moveAnim.loadAnimationFromSheet("images/enemies/slime.png", 3, 1, 180);
         }
 
         // Item Animations
@@ -175,7 +178,7 @@ public class Game extends GameCore
                             tileX = tmap.getTileXC(i, j);
                             tileY = tmap.getTileYC(i, j);
                             coin.setPosition(tileX, tileY);
-                            entities.add(coin);
+                            coins.add(coin);
                             break;
                         }
                         case 'n': {
@@ -184,7 +187,6 @@ public class Game extends GameCore
                             tileX = tmap.getTileXC(i, j) - (48 - tmap.getTileWidth());
                             tileY = tmap.getTileYC(i, j) - (48 - tmap.getTileHeight());
                             flag.setPosition(tileX, tileY);
-                            entities.add(flag);
                             break;
                         }
 //                        case 'm': {
@@ -211,7 +213,6 @@ public class Game extends GameCore
                             tileX = tmap.getTileXC(i, j);
                             tileY = tmap.getTileYC(i, j);
                             player.setPosition(tileX, tileY);
-                            entities.add(player);
                             break;
                         }
                         case '/': {
@@ -220,7 +221,7 @@ public class Game extends GameCore
                             tileX = tmap.getTileXC(i, j);
                             tileY = tmap.getTileYC(i, j);
                             slime.setPosition(tileX, tileY);
-                            entities.add(slime);
+                            slimes.add(slime);
                             break;
                         }
                         default: break;
@@ -269,24 +270,37 @@ public class Game extends GameCore
         g.setColor(Color.white);
         g.fillRect(0, 0, getWidth(), getHeight());
 
-        for (Sprite bg: backgrounds) {
-            bg.setOffsets(xo, yo);
-            bg.setScale(1, 1.18f);
-            bg.drawTransformed(g);
+        for (int i = -1; i < 5; i++) {
+            for (Sprite bg : backgrounds) {
+                bg.setOffsets((bg.getWidth()*i), 0);
+                bg.setScale(1, 1.18f);
+                bg.drawTransformed(g);
+            }
         }
 
-        for(Sprite e: entities) {
-            e.setOffsets(xo, yo);
-            e.drawTransformed(g);
+        player.setOffsets(xo, yo);
+        player.drawTransformed(g);
+
+        for(Slime s: slimes) {
+            s.setOffsets(xo, yo);
+            s.drawTransformed(g);
+        }
+
+        flag.setOffsets(xo, yo);
+        flag.drawTransformed(g);
+
+        for(Coin c: coins) {
+            c.setOffsets(xo, yo);
+            c.drawTransformed(g);
         }
 
         // Apply offsets to tile map and draw  it
         tmap.draw(g, xo, yo);
         
         // Show score and status information
-//        String msg = String.format("Score: %d", total/100);
-//        g.setColor(Color.darkGray);
-//        g.drawString(msg, getWidth() - 80, 50);
+        String msg = String.format("Score: %d", total/100);
+        g.setColor(Color.black);
+        g.drawString(msg, getWidth() - 80, 65);
     }
 
     /**
@@ -298,24 +312,24 @@ public class Game extends GameCore
     	if (paused) return;
         // Make adjustments to the speed of the sprite due to gravity
         player.setVelocityY(player.getVelocityY() + (gravity * elapsed));
+        slime.setVelocityY(slime.getVelocityY() + (gravity * elapsed));
 
        	player.setAnimationSpeed(1.0f);
        	
         // Now update the sprites animation and position
-        for (Sprite e: entities) {
-            e.update(elapsed);
-        }
-
         for (Sprite bg: backgrounds) {
             bg.update(elapsed);
         }
 
-        if (player.getX() < 350) {
-            bg1.setOffsets(-bg1.getWidth(), 0);
-            bg2.setOffsets(-bg2.getWidth(), 0);
-            bg3.setOffsets(-bg3.getWidth(), 0);
-            bg4.setOffsets(-bg4.getWidth(), 0);
-            bg5.setOffsets(-bg5.getWidth(), 0);
+        player.update(elapsed);
+        flag.update(elapsed);
+
+        for (Slime s: slimes) {
+            s.update(elapsed);
+        }
+
+        for (Coin c: coins) {
+            c.update(elapsed);
         }
 
         if (player.getX() >= 500 && !(player.getX() >= (tmap.getPixelWidth() - 500))) {
@@ -364,7 +378,11 @@ public class Game extends GameCore
 
         // Then check for any collisions that may have occurred
         handleScreenEdge(player, tmap, elapsed);
+        handleScreenEdge(slime, tmap, elapsed);
         checkTileCollision(player, tmap);
+        for (Slime s: slimes) {
+            s.checkTileCollision(s, tmap);
+        }
     }
 
     /**
@@ -409,7 +427,7 @@ public class Game extends GameCore
     }
 
     public boolean boundingBoxCollision(Sprite s1, Sprite s2) {
-    	return false;   	
+        return false;
     }
     
     /**

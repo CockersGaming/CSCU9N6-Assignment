@@ -86,8 +86,6 @@ public class Slime extends Sprite {
         float brXDiff = brTileMidX - (sx + s.getWidth());
         float brYDiff = brTileMidY - (sy + s.getHeight());
 
-        int bounceDir = 0;
-
         if (tl != '.' || tr != '.' || bl != '.' || br != '.') // If it's not a dot (empty space), handle it
         {
             // Left Collision
@@ -103,6 +101,14 @@ public class Slime extends Sprite {
                 s.setVelocityY(0);
                 s.setY(tmap.getTileYC(blXTile, blYTile) - s.getHeight());
                 s.setIsOnGround(true);
+
+                System.out.println(s.getX());
+
+                if (br == '.' && bl == '¦') {
+                    s.moveLeft();
+                } else if (bl == '.' && br == '`') {
+                    s.moveRight();
+                }
             }
             // Top
             else if ((tr != '.' && br == '.' && Math.abs(trYDiff) >= Math.abs(trXDiff)) || (tl != '.' && bl == '.' && Math.abs(tlYDiff) >= Math.abs(tlXDiff))) {

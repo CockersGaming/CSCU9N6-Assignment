@@ -45,6 +45,8 @@ public class Sprite {
 
     private boolean isOnGround;
 
+    private final float MOVE_SPEED = 0.2f;
+
     /**
      *  Creates a new Sprite object with the specified Animation.
      *  
@@ -468,5 +470,20 @@ public class Sprite {
 
     public void setIsOnGround(boolean isOnGround) {
         this.isOnGround = isOnGround;
+    }
+
+    public void moveLeft() {
+        this.setVelocityX(-MOVE_SPEED);
+        this.setScaleX(-1);
+    }
+
+    public void moveRight() {
+        this.setVelocityX(MOVE_SPEED);
+        this.setScaleX(1);
+    }
+
+    public void stopMoving() {
+        this.setVelocityX(0);
+        this.setScaleX(1);
     }
 }

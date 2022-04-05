@@ -278,9 +278,6 @@ public class Game extends GameCore
             }
         }
 
-        player.setOffsets(xo, yo);
-        player.drawTransformed(g);
-
         for(Slime s: slimes) {
             s.setOffsets(xo, yo);
             s.drawTransformed(g);
@@ -293,6 +290,9 @@ public class Game extends GameCore
             c.setOffsets(xo, yo);
             c.drawTransformed(g);
         }
+
+        player.setOffsets(xo, yo);
+        player.drawTransformed(g);
 
         // Apply offsets to tile map and draw  it
         tmap.draw(g, xo, yo);
@@ -418,7 +418,7 @@ public class Game extends GameCore
             case KeyEvent.VK_RIGHT: moveRight = true; break;
             case KeyEvent.VK_SPACE: {
                 if (player.isOnGround()) {
-                    player.setVelocityY(-0.55f);
+                    player.setVelocityY(-0.4f);
                     player.setIsOnGround(false);
                 }
                 break;

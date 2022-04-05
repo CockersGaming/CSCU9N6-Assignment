@@ -4,6 +4,8 @@ import game2D.Animation;
 import game2D.Sprite;
 import game2D.TileMap;
 
+import java.util.Random;
+
 public class Slime extends Sprite {
 
     private final float SLIME_SPEED = 0.1f;
@@ -114,7 +116,12 @@ public class Slime extends Sprite {
                 s.setY((tmap.getTileYC(trXTile, trYTile) +tileHeight) + s.getHeight());
             }
         } else {
-            s.moveLeft();
+            Random rand = new Random();
+            int ranNum = rand.nextInt((1-0) + 1) + 0;
+            if (ranNum > 0)
+                s.moveLeft();
+            else
+                s.moveRight();
         }
     }
 }

@@ -102,11 +102,9 @@ public class Slime extends Sprite {
                 s.setY(tmap.getTileYC(blXTile, blYTile) - s.getHeight());
                 s.setIsOnGround(true);
 
-                System.out.println(s.getX());
-
-                if (br == '.' && bl == '¦') {
+                if ((br == '.' && bl == '¦') || (br == '.' && bl == 'o')) {
                     s.moveLeft();
-                } else if (bl == '.' && br == '`') {
+                } else if ((bl == '.' && br == '`') || (bl == '.' && br == 'u')) {
                     s.moveRight();
                 }
             }

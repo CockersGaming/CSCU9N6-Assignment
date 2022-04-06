@@ -2,14 +2,14 @@
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 
 
 import game2D.*;
 import game2D.entities.Enemy.Slime;
 import game2D.entities.Player.Player;
-import game2D.entities.items.*;
-
-import javax.xml.stream.FactoryConfigurationError;
+import game2D.entities.Items.*;
 
 // Game demonstrates how we can override the GameCore class
 // to create our own 'game'. We usually need to implement at
@@ -63,7 +63,8 @@ public class Game extends GameCore
 
     TileMap tmap = new TileMap(); // Our tile map, note that we load it in init()
     
-    long total; // The score will be the total time elapsed since a crash
+    long score; // The score will be the total time elapsed since a crash
+    long totalCoinsCollected; // The score will be the total time elapsed since a crash
 
     /**
 	 * The obligatory main method that creates
@@ -94,7 +95,7 @@ public class Game extends GameCore
         // Load the tile map and print it out so we can check it is valid
         tmap.loadMap("maps", "map.txt");
         
-        setSize(tmap.getPixelWidth() / 3, tmap.getPixelHeight() + 16);
+        setSize(tmap.getPixelWidth() / 8, (tmap.getPixelHeight() + 16));
         setVisible(true);
 
         // Player Animations
@@ -257,7 +258,7 @@ public class Game extends GameCore
      * the game.
      */
     public void initialiseGame() {
-    	total = 0;
+        totalCoinsCollected = 0;
         player.setVelocityX(0);
         player.setVelocityY(0);
         player.show();
@@ -298,8 +299,8 @@ public class Game extends GameCore
         tmap.draw(g, xo, yo);
         
         // Show score and status information
-        String msg = String.format("Score: %d", total/100);
-        g.setColor(Color.black);
+        String msg = String.format("Score: %d", (score/100) + (totalCoinsCollected * 10));
+        g.setColor(Color.white);
         g.drawString(msg, getWidth() - 80, 65);
     }
 
@@ -310,9 +311,9 @@ public class Game extends GameCore
      */    
     public void update(long elapsed) {
     	if (paused) return;
+
         // Make adjustments to the speed of the sprite due to gravity
         player.setVelocityY(player.getVelocityY() + (gravity * elapsed));
-
        	player.setAnimationSpeed(1.0f);
        	
         // Now update the sprites animation and position
@@ -325,6 +326,7 @@ public class Game extends GameCore
 
         for (Slime s: slimes) {
             s.setVelocityY(s.getVelocityY() + (gravity * elapsed));
+            s.setAnimationSpeed(.5f);
             s.update(elapsed);
         }
 
@@ -332,31 +334,48 @@ public class Game extends GameCore
             c.update(elapsed);
         }
 
-        if (player.getX() >= 500 && !(player.getX() >= (tmap.getPixelWidth() - 500))) {
-            xo = (int) (500 - player.getX());
-        } else {
+        if (player.getX() <= bg1.getWidth()) {
             xo = 0;
+        }
+
+        //  && player.getX() <= (tmap.getPixelWidth() - bg1.getWidth())
+
+        if (player.getX() >= ((tmap.getPixelWidth() / 8) / 2) && player.getX() <= 3304) {
+            xo = (int) (((tmap.getPixelWidth() / 8) / 2) - player.getX());
+        }
+
+        if (player.getX() <= ((tmap.getPixelWidth() / 8) / 2) || player.getX() >= 3304) {
+            for (Sprite bg: backgrounds) {
+                bg.setVelocityX(0);
+            }
+        } else {
+            if (moveLeft) {
+                bg1.setVelocityX(0.0001f);
+                bg2.setVelocityX(0.001f);
+                bg3.setVelocityX(0.01f);
+                bg4.setVelocityX(0.05f);
+                bg5.setVelocityX(0.1f);
+            }
+
+            if (moveRight) {
+                bg1.setVelocityX(-0.0001f);
+                bg2.setVelocityX(-0.001f);
+                bg3.setVelocityX(-0.01f);
+                bg4.setVelocityX(-0.05f);
+                bg5.setVelocityX(-0.1f);
+            }
         }
 
         if (moveLeft) {
             player.moveLeft();
             player.setAnimation(runningAnim);
-            bg1.setVelocityX(0.0001f);
-            bg2.setVelocityX(0.001f);
-            bg3.setVelocityX(0.01f);
-            bg4.setVelocityX(0.05f);
-            bg5.setVelocityX(0.1f);
         }
 
         if (moveRight) {
             player.moveRight();
             player.setAnimation(runningAnim);
-            bg1.setVelocityX(-0.0001f);
-            bg2.setVelocityX(-0.001f);
-            bg3.setVelocityX(-0.01f);
-            bg4.setVelocityX(-0.05f);
-            bg5.setVelocityX(-0.1f);
         }
+
 
         if (player.getVelocityX() == 0) {
             for (Sprite bg: backgrounds) {
@@ -379,10 +398,19 @@ public class Game extends GameCore
         // Then check for any collisions that may have occurred
         handleScreenEdge(player, tmap, elapsed);
         handleScreenEdge(slime, tmap, elapsed);
-        checkTileCollision(player, tmap);
+        player.checkTileCollision(player, tmap);
         for (Slime s: slimes) {
             s.checkTileCollision(s, tmap);
         }
+
+        coins.removeIf(c -> {
+            if (boundingBoxCollision(player, c)){
+                totalCoinsCollected++;
+                return true;
+            } else {
+                return false;
+            }
+        });
     }
 
     /**
@@ -427,91 +455,14 @@ public class Game extends GameCore
     }
 
     public boolean boundingBoxCollision(Sprite s1, Sprite s2) {
-        return false;
-    }
-    
-    /**
-     * Check and handles collisions with a tile map for the
-     * given sprite 's'. Initial functionality is limited...
-     * 
-     * @param s			The Sprite to check collisions for
-     * @param tmap		The tile map to check 
-     */
-    public void checkTileCollision(Sprite s, TileMap tmap) {
-    	// Take a note of a sprite's current position
-    	float sx = s.getX();
-    	float sy = s.getY();
-    	
-    	// Find out how wide and how tall a tile is
-    	float tileWidth = tmap.getTileWidth();
-    	float tileHeight = tmap.getTileHeight();
 
-        // Top Left
-    	int	tlXTile = (int)(sx / tileWidth);
-    	int tlYTile = (int)(sy / tileHeight);
-    	char tl = tmap.getTileChar(tlXTile, tlYTile);
+        Rectangle sprite1 = new Rectangle((int) s1.getX(), (int) s1.getY(), s1.getWidth(), s1.getHeight());
+        Rectangle sprite2 = new Rectangle((int) s2.getX(), (int) s2.getY(), s2.getWidth(), s2.getHeight());
 
-        // Top Right
-        int	trXTile = (int) ((sx + s.getWidth()) / tileWidth);
-        int trYTile = (int) (sy / tileHeight);
-        char tr = tmap.getTileChar(trXTile, trYTile);
-
-        // Bottom Left
-        int	blXTile = (int)(sx / tileWidth);
-        int blYTile = (int) ((sy + s.getHeight()) / tileHeight);
-        char bl = tmap.getTileChar(blXTile, blYTile);
-
-        // Bottom Right
-        int	brXTile = (int) ((sx + s.getWidth()) / tileWidth);
-        int brYTile = (int) ((sy + s.getHeight()) / tileHeight);
-        char br = tmap.getTileChar(brXTile, brYTile);
-
-        // Logic to get the difference on the X and Y axis from a corner of the sprite
-        // to the middle of a tile to find out what collision it is
-        float tlTileMidX = tmap.getTileXC(tlXTile, tlYTile) + (tileWidth / 2);
-        float tlTileMidY = tmap.getTileYC(tlXTile, tlYTile) + (tileHeight / 2);
-        float tlXDiff = tlTileMidX - sx;
-        float tlYDiff = tlTileMidY - sy;
-
-        float trTileMidX = tmap.getTileXC(trXTile, trYTile) + (tileWidth / 2);
-        float trTileMidY = tmap.getTileYC(trXTile, trYTile) + (tileHeight / 2);
-        float trXDiff = trTileMidX - (sx + s.getWidth());
-        float trYDiff = trTileMidY - sy;
-
-        float blTileMidX = tmap.getTileXC(blXTile, blYTile) + (tileWidth / 2);
-        float blTileMidY = tmap.getTileYC(blXTile, blYTile) + (tileHeight / 2);
-        float blXDiff = blTileMidX - sx;
-        float blYDiff = blTileMidY - (sy + s.getHeight());
-
-        float brTileMidX = tmap.getTileXC(brXTile, brYTile) + (tileWidth / 2);
-        float brTileMidY = tmap.getTileYC(brXTile, brYTile) + (tileHeight / 2);
-        float brXDiff = brTileMidX - (sx + s.getWidth());
-        float brYDiff = brTileMidY - (sy + s.getHeight());
-
-        if (tl != '.' || tr != '.' || bl != '.' || br != '.') // If it's not a dot (empty space), handle it
-        {
-            // Left Collision
-            if ((tl != '.' && tr == '.' && Math.abs(tlYDiff) >= Math.abs(tlXDiff)) || (bl != '.' && br == '.' && Math.abs(blXDiff) >= Math.abs(blYDiff))) {
-                s.setVelocityX(0);
-                s.setX(tmap.getTileXC(tlXTile, tlYTile) + tileWidth);
-            }
-            // Right
-            else if ((tr != '.' && tl == '.' && Math.abs(trYDiff) >= Math.abs(trXDiff)) || (br != '.' && bl == '.' && Math.abs(brXDiff) >= Math.abs(brYDiff)) ) {
-                s.setVelocityX(0);
-                s.setX(tmap.getTileXC(trXTile, trYTile) - s.getWidth());
-            }
-            // Bottom
-            if ((br != '.' && tr == '.' && Math.abs(brYDiff) >= Math.abs(brXDiff)) || (bl != '.' && tl == '.' && Math.abs(blYDiff) >= Math.abs(blXDiff))) {
-                s.setVelocityY(0);
-                s.setY(tmap.getTileYC(blXTile, blYTile) - s.getHeight());
-                s.setIsOnGround(true);
-            }
-            // Top
-            else if ((tr != '.' && br == '.' && Math.abs(trYDiff) >= Math.abs(trXDiff)) || (tl != '.' && bl == '.' && Math.abs(tlYDiff) >= Math.abs(tlXDiff))) {
-                s.setVelocityY(0);
-                s.setY((tmap.getTileYC(trXTile, trYTile) +tileHeight) + s.getHeight());
-            }
-        }
+        if (sprite1.intersects(sprite2))
+            return true;
+        else
+            return false;
     }
 
     public void keyReleased(KeyEvent e) {
@@ -524,7 +475,7 @@ public class Game extends GameCore
 		{
 			case KeyEvent.VK_ESCAPE : stop(); break;
 			case KeyEvent.VK_P : paused = !paused; break;
-            case KeyEvent.VK_R: player.setPosition(player.getWidth(), tmap.getPixelHeight() - 192); break;
+            case KeyEvent.VK_R: player.setPosition(tmap.getTileWidth() + player.getWidth(), tmap.getPixelHeight() - 128); xo = 0; break;
             case KeyEvent.VK_LEFT: moveLeft = false; player.stopMoving(); break;
             case KeyEvent.VK_RIGHT: moveRight = false; player.stopMoving(); break;
             default :  break;

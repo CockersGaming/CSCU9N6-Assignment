@@ -1,7 +1,8 @@
-package game2D.entities.items;
+package game2D.entities.Items;
 
 import game2D.Animation;
 import game2D.Sprite;
+import game2D.TileMap;
 
 public class Coin extends Sprite {
     /**
@@ -12,4 +13,5 @@ public class Coin extends Sprite {
     public Coin(Animation anim) {
         super(anim);
     }
+
 }

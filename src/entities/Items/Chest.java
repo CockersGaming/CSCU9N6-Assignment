@@ -1,15 +1,15 @@
-package game2D.entities.Items;
+package entities.Items;
 
 import game2D.Animation;
 import game2D.Sprite;
 
-public class Flag extends Sprite {
+public class Chest extends Sprite {
     /**
      * Creates a new Sprite object with the specified Animation.
      *
      * @param anim The animation to use for the sprite.
      */
-    public Flag(Animation anim) {
+    public Chest(Animation anim) {
         super(anim);
     }
 }

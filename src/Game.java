@@ -1,15 +1,16 @@
-
 import java.awt.*;
 import java.awt.event.KeyEvent;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
 
 
 import game2D.*;
-import game2D.entities.Enemy.Slime;
-import game2D.entities.Player.Player;
-import game2D.entities.Items.*;
+import entities.Enemy.Slime;
+import entities.Player.Player;
+import entities.Items.*;
+
+import javax.sound.sampled.*;
 
 // Game demonstrates how we can override the GameCore class
 // to create our own 'game'. We usually need to implement at
@@ -31,19 +32,20 @@ public class Game extends GameCore
     static int screenWidth = 512;
     static int screenHeight = 384;
     int xo = 0;
-    int yo = 16;
+    int yo = 0;
     float gravity = 0.001f;
     int playerHealth;
     
     // Game state flags
+    boolean gameStart;
     boolean paused;
-    boolean moveLeft, moveRight, still;
+    boolean moveLeft, moveRight, still, attack;
     boolean slimeMoveLeft, slimeMoveRight, slimeStill;
     boolean dead;
 
     // Game Resources
     // Player Animations
-    Animation standingAnim, runningAnim, jumpingAnim, fallingAnim, deadAnim;
+    Animation standingAnim, runningAnim, jumpingAnim, fallingAnim, deadAnim, attackAnim;
     // Slime Animations
     Animation moveAnim;
     // Item Animations
@@ -52,6 +54,9 @@ public class Game extends GameCore
     Animation background1, background2, background3, background4, background5;
     // Lives Animations
     Animation heart1Anim, heart2Anim, heart3Anim;
+    // Sound Clip
+    Clip startClip, mainClip, overClip;
+    AudioInputStream start, main, over;
 
     // Game Entities
     Player player;
@@ -89,20 +94,26 @@ public class Game extends GameCore
      * create animations, register event handlers
      */
     public void init() {
+        gameStart = true;
         paused = false;
         moveRight = false;
         moveLeft = false;
         still = true;
+        attack = false;
         slimeMoveRight = false;
         slimeMoveLeft = true;
         slimeStill = true;
         dead = false;
         playerHealth = 3;
 
+        // JFrame Apperance Changes
+        this.setLocationRelativeTo(null);
+        this.setUndecorated(true);
+
         // Load the tile map and print it out so we can check it is valid
         tmap.loadMap("maps", "map.txt");
         
-        setSize(tmap.getPixelWidth() / 6, (tmap.getPixelHeight() + 16));
+        setSize(tmap.getPixelWidth() / 6, (tmap.getPixelHeight()));
         setVisible(true);
 
         // Player Animations
@@ -121,6 +132,9 @@ public class Game extends GameCore
 
             deadAnim = new Animation();
             deadAnim.loadAnimationFromSheet("images/character/dead.png", 7, 1, 90);
+
+            attackAnim = new Animation();
+            attackAnim.loadAnimationFromSheet("images/character/attack.png", 6, 1, 90);
         }
 
         // Slime Animations
@@ -148,13 +162,13 @@ public class Game extends GameCore
             runeAnim.loadAnimationFromSheet("images/items/Rune.png", 4, 1, 125);
 
             heart1Anim = new Animation();
-            heart1Anim.loadAnimationFromSheet("images/items/heart.png", 4, 1, 250);
+            heart1Anim.loadAnimationFromSheet("images/items/Heart.png", 4, 1, 250);
 
             heart2Anim = new Animation();
-            heart2Anim.loadAnimationFromSheet("images/items/heart.png", 4, 1, 250);
+            heart2Anim.loadAnimationFromSheet("images/items/Heart.png", 4, 1, 250);
 
             heart3Anim = new Animation();
-            heart3Anim.loadAnimationFromSheet("images/items/heart.png", 4, 1, 250);
+            heart3Anim.loadAnimationFromSheet("images/items/Heart.png", 4, 1, 250);
         }
 
         // Background Animations
@@ -280,6 +294,28 @@ public class Game extends GameCore
             backgrounds.add(bg5);
         }
 
+        // Audio setup
+        {
+            try {
+                start = AudioSystem.getAudioInputStream(new File("sounds/Game Start.mid"));
+                main = AudioSystem.getAudioInputStream(new File("sounds/Load Game.mid"));
+                over = AudioSystem.getAudioInputStream(new File("sounds/Game Over.mid"));
+
+                startClip = AudioSystem.getClip();
+                startClip.open(start);
+
+                mainClip = AudioSystem.getClip();
+                mainClip.open(main);
+
+                overClip = AudioSystem.getClip();
+                overClip.open(over);
+
+                startClip.start();
+            } catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
+                e.printStackTrace();
+            }
+        }
+
         initialiseGame();
     }
 
@@ -299,6 +335,12 @@ public class Game extends GameCore
      * Draw the current state of the game
      */
     public void draw(Graphics2D g) {
+
+        if (!startClip.isRunning()) {
+            gameStart = false;
+            mainClip.loop(Clip.LOOP_CONTINUOUSLY);
+        }
+
         g.setColor(Color.white);
         g.fillRect(0, 0, getWidth(), getHeight());
 
@@ -328,7 +370,7 @@ public class Game extends GameCore
 
         int i = 1;
         for (Heart h: hearts) {
-            h.setPosition((37 * i), 52);
+            h.setPosition((36 * i), 36);
             h.draw(g);
             i++;
         }
@@ -342,6 +384,8 @@ public class Game extends GameCore
         g.drawString(msg, getWidth() - 80, 65);
 
         if (dead) {
+            mainClip.stop();
+            overClip.loop(Clip.LOOP_CONTINUOUSLY);
             FontMetrics metrics = g.getFontMetrics(getFont()); // Allows you to get the x and y length of a string to allow the string to be in the middle of the screen
             String msgDead1 = String.format("You died with a Score of: %d", (score/100) + (totalCoinsCollected * 10));
             String msgDead2 = "Press ESC to quit";
@@ -428,6 +472,9 @@ public class Game extends GameCore
             player.setAnimation(runningAnim);
         }
 
+        if (attack) {
+            player.setAnimation(attackAnim);
+        }
 
         if (player.getVelocityX() == 0) {
             for (Sprite bg: backgrounds) {
@@ -462,7 +509,13 @@ public class Game extends GameCore
 
         slimes.removeIf(s -> {
             if (boundingBoxCollision(player, s)) {
-                playerHealth--;
+                if (attack) {
+                    System.out.println("attack");
+                    score += 50;
+                } else {
+                    playerHealth--;
+                    System.out.println("no attack");
+                }
                 return true;
             } else {
                 return false;
@@ -526,23 +579,30 @@ public class Game extends GameCore
                 break;
             }
             case KeyEvent.VK_LEFT: {
-                if (!dead) {
+                if (!dead && !gameStart) {
                     moveLeft = true;
                 }
                 break;
             }
             case KeyEvent.VK_RIGHT: {
-                if (!dead) {
+                if (!dead && !gameStart) {
                     moveRight = true;
                 }
                 break;
             }
             case KeyEvent.VK_SPACE: {
-                if (player.isOnGround() && !dead) {
+                if (player.isOnGround() && !dead && !gameStart) {
                     player.setVelocityY(-0.4f);
                     player.setIsOnGround(false);
+                    Sound jump = new Sound("sounds/jump.wav");
+                    jump.start();
                 }
                 break;
+            }
+            case KeyEvent.VK_A: {
+                if (!dead && !gameStart) {
+                    attack = true;
+                }
             }
         }
     }
@@ -564,31 +624,34 @@ public class Game extends GameCore
 		switch (key)
 		{
 			case KeyEvent.VK_P : {
-                if (!dead) {
+                if (!dead && !gameStart) {
                     paused = !paused;
                 }
                 break;
             }
             case KeyEvent.VK_R: {
-                if (!dead) {
+                if (!dead && !gameStart) {
                     player.setPosition(tmap.getTileWidth() + player.getWidth(), tmap.getPixelHeight() - 128);
                     xo = 0;
                 }
                 break;
             }
             case KeyEvent.VK_LEFT: {
-                if (!dead) {
+                if (!dead && !gameStart) {
                     moveLeft = false;
                     player.stopMoving();
                 }
                 break;
             }
             case KeyEvent.VK_RIGHT: {
-                if (!dead) {
+                if (!dead && !gameStart) {
                     moveRight = false;
                     player.stopMoving();
                 }
                 break;
+            }
+            case KeyEvent.VK_A: {
+                attack = false;
             }
             default :  break;
 		}

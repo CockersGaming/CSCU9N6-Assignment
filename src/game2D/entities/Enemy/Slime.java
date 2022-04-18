@@ -117,7 +117,7 @@ public class Slime extends Sprite {
             }
         } else {
             Random rand = new Random();
-            int ranNum = rand.nextInt((1-0) + 1) + 0;
+            int ranNum = rand.nextInt((1) + 1);
             if (ranNum > 0)
                 s.moveLeft();
             else

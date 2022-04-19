@@ -3,6 +3,7 @@ import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Random;
 
 
 import entities.Enemy.Monster;
@@ -66,6 +67,7 @@ public class Game extends GameCore
     Animation heart1Anim, heart2Anim, heart3Anim;
     // Sound Clip
     Clip startClip, mainClip, overClip;
+
     AudioInputStream start, main, over;
 
     // Game Entities
@@ -596,6 +598,8 @@ public class Game extends GameCore
         coins.removeIf(c -> {
             if (boundingBoxCollision(player, c)) {
                 totalCoinsCollected++;
+                Sound sound = new Sound("sounds/coin.wav");
+                sound.start();
                 return true;
             } else {
                 return false;
@@ -606,6 +610,8 @@ public class Game extends GameCore
             if (boundingBoxCollision(player, k)) {
                 collectedKeys.add(k);
                 score += 25;
+                Sound sound = new Sound("sounds/key.wav");
+                sound.start();
                 return true;
             } else {
                 return false;
@@ -615,6 +621,8 @@ public class Game extends GameCore
         if (boundingBoxCollision(player, chest) && collectedKeys.size() == 3) {
             chest.playAnimation();
             chest.pauseAnimationAtFrame(3);
+            Sound sound = new Sound("sounds/chest.wav");
+            sound.start();
             levelComplete = true;
         }
 
@@ -682,12 +690,20 @@ public class Game extends GameCore
             attack = false;
             if (monsterHealth == 1){
                 score += 75;
+                return false;
             }
             else {
                 monsterHealth--;
             }
+
+            Sound sound = new Sound("sounds/enemy_hit.wav");
+            sound.start();
+
         } else {
             playerHealth--;
+            
+            Sound sound = new Sound("sounds/player_hit.wav");
+            sound.start();
         }
         return true;
     }
@@ -748,6 +764,8 @@ public class Game extends GameCore
                 if (!dead && !gameStart && !levelComplete) {
                     player.setAnimation(attackAnim);
                     attack = true;
+                    Sound jump = new Sound("sounds/hit.wav");
+                    jump.start();
                 }
                 break;
             }

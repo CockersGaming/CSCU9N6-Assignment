@@ -426,9 +426,12 @@ public class Game extends GameCore
         }
 
         int j = 1;
+        int collKeysX = 150;
         for (Key k: collectedKeys) {
             k.setScale(1.5f);
-            k.setPosition(300 + (k.getWidth() * j), 42);
+            System.out.println(collKeysX);
+            k.setPosition(collKeysX, 42);
+            collKeysX += k.getWidth() * j;
             k.drawTransformed(g);
             j++;
         }

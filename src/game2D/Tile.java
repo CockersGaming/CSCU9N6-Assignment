@@ -3,7 +3,7 @@ package game2D;
 /**
  * A Tile in the TileMap.
  * 
- * @author David Cairns
+ * @studentID 2811801
  *
  */
 public class Tile {

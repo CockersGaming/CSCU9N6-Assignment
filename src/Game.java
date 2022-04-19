@@ -24,7 +24,7 @@ import javax.swing.*;
 // override this with your own event handler.
 
 /**
- * @author David Cairns
+ * @studentID 2811801
  *
  */
 @SuppressWarnings("serial")
@@ -701,7 +701,7 @@ public class Game extends GameCore
 
         } else {
             playerHealth--;
-            
+
             Sound sound = new Sound("sounds/player_hit.wav");
             sound.start();
         }

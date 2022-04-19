@@ -10,7 +10,7 @@ import javax.swing.JFrame;
  *   The ScreenManager class manages initializing and displaying
  *   full screen graphics modes.
  *
- *   @author David Cairns
+ *   @studentID 2811801
 */
 
 public class ScreenManager {

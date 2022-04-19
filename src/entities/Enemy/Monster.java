@@ -6,6 +6,13 @@ import game2D.TileMap;
 
 import java.util.Random;
 
+
+/**
+ * @studentID 2811801
+ *
+ */
+@SuppressWarnings("serial")
+
 public class Monster extends Sprite {
 
     private final float MONSTER_SPEED = 0.2f;

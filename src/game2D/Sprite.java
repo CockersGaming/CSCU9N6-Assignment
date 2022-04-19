@@ -7,7 +7,7 @@ import java.awt.geom.*;
 /**
  * This class provides the functionality for a moving animated image or Sprite.
  * 
- * @author David Cairns
+ * @studentID 2811801
  *
  */
 public class Sprite {

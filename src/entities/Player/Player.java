@@ -4,6 +4,13 @@ import game2D.Animation;
 import game2D.Sprite;
 import game2D.TileMap;
 
+
+/**
+ * @studentID 2811801
+ *
+ */
+@SuppressWarnings("serial")
+
 public class Player extends Sprite {
 
     private final float PLAYER_SPEED = 0.2f;

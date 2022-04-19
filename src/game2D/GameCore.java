@@ -8,7 +8,7 @@ import java.awt.image.BufferedImage;
 import javax.swing.*;
 
 /**
- * @author David Cairns
+ * @studentID 2811801
  * 
  * Core Game class that implements default game loop. Subclasses should
  * implement the draw() method and override the update method.

@@ -35,6 +35,5 @@ public class Sound extends Thread {
 		}
 		catch (Exception e) {	}
 		finished = true;
-
 	}
 }

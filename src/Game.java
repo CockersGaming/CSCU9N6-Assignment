@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 
+import entities.Enemy.Monster;
 import game2D.*;
 import entities.Enemy.Slime;
 import entities.Player.Player;
@@ -35,6 +36,9 @@ public class Game extends GameCore
     int yo = 0;
     float gravity = 0.001f;
     int playerHealth;
+    int level = 1;
+    int monsterHealth;
+    int keysCollected;
     
     // Game state flags
     boolean gameStart;
@@ -42,12 +46,16 @@ public class Game extends GameCore
     boolean moveLeft, moveRight, still, attack;
     boolean slimeMoveLeft, slimeMoveRight, slimeStill;
     boolean dead;
+    boolean help;
+    boolean levelComplete;
 
     // Game Resources
     // Player Animations
     Animation standingAnim, runningAnim, jumpingAnim, fallingAnim, deadAnim, attackAnim;
     // Slime Animations
-    Animation moveAnim;
+    Animation slimeMoveAnim;
+    // Monster Animations
+    Animation monsterMoveAnim;
     // Item Animations
     Animation chestAnim, coinAnim, flagAnim, keyAnim, runeAnim;
     // Background Animations
@@ -61,13 +69,20 @@ public class Game extends GameCore
     // Game Entities
     Player player;
     Slime slime;
+    Monster monster;
+    Chest chest;
+    Key key;
     Coin coin;
+//    Rune rune;
     Flag flag;
     Heart heart1, heart2, heart3;
     Sprite bg1, bg2, bg3, bg4, bg5; // backgrounds
 
     ArrayList<Sprite> backgrounds = new ArrayList<Sprite>();
     ArrayList<Slime> slimes = new ArrayList<Slime>();
+    ArrayList<Monster> monsters = new ArrayList<Monster>();
+    ArrayList<Key> keys = new ArrayList<Key>();
+    ArrayList<Key> collectedKeys = new ArrayList<Key>();
     ArrayList<Coin> coins = new ArrayList<Coin>();
     ArrayList<Heart> hearts = new ArrayList<Heart>();
 
@@ -105,13 +120,22 @@ public class Game extends GameCore
         slimeStill = true;
         dead = false;
         playerHealth = 3;
+        help = false;
+        levelComplete = false;
+        monsterHealth = 2;
+        keysCollected = 0;
 
         // JFrame Apperance Changes
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        int height = screenSize.height;
+        int width = screenSize.width;
+        this.setSize(width/2, height/2);
+
         this.setLocationRelativeTo(null);
         this.setUndecorated(true);
 
         // Load the tile map and print it out so we can check it is valid
-        tmap.loadMap("maps", "map.txt");
+        tmap.loadMap("maps", "level_" + level + ".txt");
         
         setSize(tmap.getPixelWidth() / 6, (tmap.getPixelHeight()));
         setVisible(true);
@@ -137,10 +161,13 @@ public class Game extends GameCore
             attackAnim.loadAnimationFromSheet("images/character/attack.png", 6, 1, 90);
         }
 
-        // Slime Animations
+        // Enemy Animations
         {
-            moveAnim = new Animation();
-            moveAnim.loadAnimationFromSheet("images/enemies/slime.png", 3, 1, 180);
+            slimeMoveAnim = new Animation();
+            slimeMoveAnim.loadAnimationFromSheet("images/enemies/slime.png", 3, 1, 200);
+
+            monsterMoveAnim = new Animation();
+            monsterMoveAnim.loadAnimationFromSheet("images/enemies/monster.png", 4, 1, 300);
         }
 
         // Item Animations
@@ -156,7 +183,7 @@ public class Game extends GameCore
             flagAnim.loadAnimationFromSheet("images/items/Flag.png", 4, 1, 125);
 
             keyAnim = new Animation();
-            keyAnim.loadAnimationFromSheet("images/items/Key.png", 4, 1, 125);
+            keyAnim.loadAnimationFromSheet("images/items/Key.png", 4, 1, 225);
 
             runeAnim = new Animation();
             runeAnim.loadAnimationFromSheet("images/items/Rune.png", 4, 1, 125);
@@ -197,15 +224,14 @@ public class Game extends GameCore
                     char tl = tmap.getTileChar(i, j);
 
                     switch (tl) {
-//                        case 'v': {
-//                            tmap.setTileChar('.', i, j);
-//                            chest = new Chest(chestAnim);
-//                            tileX = tmap.getTileXC(i, j);
-//                            tileY = tmap.getTileYC(i, j);
-//                            chest.setPosition(tileX, tileY);
-//                            entities.add(chest);
-//                            break;
-//                        }
+                        case 'v': {
+                            tmap.setTileChar('.', i, j);
+                            chest = new Chest(chestAnim);
+                            tileX = tmap.getTileXC(i, j);
+                            tileY = tmap.getTileYC(i, j);
+                            chest.setPosition(tileX, tileY);
+                            break;
+                        }
                         case 'b': {
                             tmap.setTileChar('.', i, j);
                             coin = new Coin(coinAnim);
@@ -223,22 +249,21 @@ public class Game extends GameCore
                             flag.setPosition(tileX, tileY);
                             break;
                         }
-//                        case 'm': {
-//                            tmap.setTileChar('.', i, j);
-//                            key = new Key(keyAnim);
-//                            tileX = tmap.getTileXC(i, j);
-//                            tileY = tmap.getTileYC(i, j);
-//                            key.setPosition(tileX, tileY);
-//                            entities.add(key);
-//                            break;
-//                        }
+                        case 'm': {
+                            tmap.setTileChar('.', i, j);
+                            key = new Key(keyAnim);
+                            tileX = tmap.getTileXC(i, j);
+                            tileY = tmap.getTileYC(i, j);
+                            key.setPosition(tileX, tileY);
+                            keys.add(key);
+                            break;
+                        }
 //                        case ',': {
 //                            tmap.setTileChar('.', i, j);
 //                            rune = new Rune(runeAnim);
 //                            tileX = tmap.getTileXC(i, j);
 //                            tileY = tmap.getTileYC(i, j);
 //                            rune.setPosition(tileX, tileY);
-//                            entities.add(rune);
 //                            break;
 //                        }
                         case '<': {
@@ -251,11 +276,20 @@ public class Game extends GameCore
                         }
                         case '/': {
                             tmap.setTileChar('.', i, j);
-                            slime = new Slime(moveAnim);
+                            slime = new Slime(slimeMoveAnim);
                             tileX = tmap.getTileXC(i, j);
                             tileY = tmap.getTileYC(i, j);
                             slime.setPosition(tileX, tileY);
                             slimes.add(slime);
+                            break;
+                        }
+                        case '?': {
+                            tmap.setTileChar('.', i, j);
+                            monster = new Monster(monsterMoveAnim);
+                            tileX = tmap.getTileXC(i, j);
+                            tileY = tmap.getTileYC(i, j);
+                            monster.setPosition(tileX, tileY);
+                            monsters.add(monster);
                             break;
                         }
                         default: break;
@@ -357,6 +391,11 @@ public class Game extends GameCore
             s.drawTransformed(g);
         }
 
+        for(Monster m: monsters) {
+            m.setOffsets(xo, yo);
+            m.drawTransformed(g);
+        }
+
         flag.setOffsets(xo, yo);
         flag.drawTransformed(g);
 
@@ -364,6 +403,17 @@ public class Game extends GameCore
             c.setOffsets(xo, yo);
             c.drawTransformed(g);
         }
+
+        for(Key k: keys) {
+            k.setOffsets(xo, yo);
+            k.drawTransformed(g);
+        }
+
+//        rune.setOffsets(xo, yo);
+//        rune.draw(g);
+
+        chest.setOffsets(xo, yo);
+        chest.draw(g);
 
         player.setOffsets(xo, yo);
         player.drawTransformed(g);
@@ -375,23 +425,55 @@ public class Game extends GameCore
             i++;
         }
 
-        // Apply offsets to tile map and draw  it
+        int j = 1;
+        for (Key k: collectedKeys) {
+            k.setScale(1.5f);
+            k.setPosition(300 + (k.getWidth() * j), 42);
+            k.drawTransformed(g);
+            j++;
+        }
+
+        // Apply offsets to tile map and draw it
         tmap.draw(g, xo, yo);
 
+        if (gameStart || help) {
+            String msg = "Press H to see these help messages,\n" +
+                    "Press space to Jump,\n" +
+                    "Press the left and right arrow to move left and right,\n" +
+                    "To attack press A while running,\n" +
+                    "Press R to reset back to the start,\n" +
+                    "Press P to pause,\n" +
+                    "Press ESC to quit,\n" +
+                    "Collect coins on your way,\n" +
+                    "Find the key to the chest,\n" +
+                    "Solve the puzzle to get through the door!\n" +
+                    "Ready? GO!";
+
+            g.setColor(Color.WHITE);
+
+            FontMetrics fm = g.getFontMetrics();
+            int y = (getHeight()/4);
+            for (String line : msg.split("\n")) {
+                int x = ((getWidth() - fm.stringWidth(line)) / 2);
+                g.drawString(line, x, y);
+                y += (fm.getHeight() + 2);
+            }
+        }
+
         // Show score and status information
-        String msg = String.format("Score: %d", (score/100) + (totalCoinsCollected * 10));
-        g.setColor(Color.white);
-        g.drawString(msg, getWidth() - 80, 65);
+        String scoreMsg = String.format("Score: %d", score + (totalCoinsCollected * 10));
+        g.setColor(Color.WHITE);
+        g.drawString(scoreMsg, getWidth() - 80, 65);
 
         if (dead) {
             mainClip.stop();
             overClip.loop(Clip.LOOP_CONTINUOUSLY);
             FontMetrics metrics = g.getFontMetrics(getFont()); // Allows you to get the x and y length of a string to allow the string to be in the middle of the screen
-            String msgDead1 = String.format("You died with a Score of: %d", (score/100) + (totalCoinsCollected * 10));
+            String msgDead1 = String.format("You died with a Score of: %d", score + (totalCoinsCollected * 10));
             String msgDead2 = "Press ESC to quit";
-            g.setColor(Color.white);
-            g.drawString(msgDead1, ((getWidth()/2) - (metrics.stringWidth(msgDead1)/2)), getHeight()/2);
-            g.drawString(msgDead2, ((getWidth()/2) - (metrics.stringWidth(msgDead2)/2)), ((getHeight()/2) + metrics.getHeight() + 5));
+            g.setColor(Color.WHITE);
+            g.drawString(msgDead1, ((getWidth()/2) - (metrics.stringWidth(msgDead1) / 2)), getHeight() / 2);
+            g.drawString(msgDead2, ((getWidth()/2) - (metrics.stringWidth(msgDead2) / 2)), ((getHeight() / 2) + metrics.getHeight() + 5));
             paused = true;
         }
     }
@@ -415,6 +497,8 @@ public class Game extends GameCore
 
         player.update(elapsed);
         flag.update(elapsed);
+//        rune.update(elapsed);
+        chest.update(elapsed);
 
         for (Slime s: slimes) {
             s.setVelocityY(s.getVelocityY() + (gravity * elapsed));
@@ -422,8 +506,22 @@ public class Game extends GameCore
             s.update(elapsed);
         }
 
+        for (Monster m: monsters) {
+            m.setVelocityY(m.getVelocityY() + (gravity * elapsed));
+            m.setAnimationSpeed(.5f);
+            m.update(elapsed);
+        }
+
         for (Coin c: coins) {
             c.update(elapsed);
+        }
+
+        for (Key k: keys) {
+            k.update(elapsed);
+        }
+
+        for (Key k: collectedKeys) {
+            k.update(elapsed);
         }
 
         for (Heart h: hearts) {
@@ -434,13 +532,12 @@ public class Game extends GameCore
             xo = 0;
         }
 
-        //  && player.getX() <= (tmap.getPixelWidth() - bg1.getWidth())
-
-        if (player.getX() >= ((float) (tmap.getPixelWidth() / 8) / 2) && player.getX() <= 3304) {
-            xo = (int) (((tmap.getPixelWidth() / 8) / 2) - player.getX());
+        // Got 342 by tracking the player X until the edge of the map is shown to stop the map movement
+        if (player.getX() >= ((float) (tmap.getPixelWidth() / 6) / 2) && player.getX() <= tmap.getPixelWidth() - 342) {
+            xo = (int) (((tmap.getPixelWidth() / 6) / 2) - player.getX());
         }
 
-        if (player.getX() <= ((float) (tmap.getPixelWidth() / 8) / 2) || player.getX() >= 3304) {
+        if (player.getX() <= ((float) (tmap.getPixelWidth() / 6) / 2) || player.getX() >= tmap.getPixelWidth() - 342) {
             for (Sprite bg: backgrounds) {
                 bg.setVelocityX(0);
             }
@@ -472,10 +569,6 @@ public class Game extends GameCore
             player.setAnimation(runningAnim);
         }
 
-        if (attack) {
-            player.setAnimation(attackAnim);
-        }
-
         if (player.getVelocityX() == 0) {
             for (Sprite bg: backgrounds) {
                 bg.setVelocityX(0);
@@ -498,6 +591,10 @@ public class Game extends GameCore
             s.checkTileCollision(s, tmap);
         }
 
+        for (Monster m: monsters) {
+            m.checkTileCollision(m, tmap);
+        }
+
         coins.removeIf(c -> {
             if (boundingBoxCollision(player, c)) {
                 totalCoinsCollected++;
@@ -507,16 +604,33 @@ public class Game extends GameCore
             }
         });
 
+        keys.removeIf(k -> {
+            if (boundingBoxCollision(player, k)) {
+                collectedKeys.add(k);
+                score += 25;
+                return true;
+            } else {
+                return false;
+            }
+        });
+
+        if (boundingBoxCollision(player, chest) && keysCollected == 3) {
+            chest.playAnimation();
+            chest.pauseAnimationAtFrame(3);
+            levelComplete = true;
+        }
+
         slimes.removeIf(s -> {
             if (boundingBoxCollision(player, s)) {
-                if (attack) {
-                    System.out.println("attack");
-                    score += 50;
-                } else {
-                    playerHealth--;
-                    System.out.println("no attack");
-                }
-                return true;
+                return attackEnemy();
+            } else {
+                return false;
+            }
+        });
+
+        monsters.removeIf(m -> {
+            if (boundingBoxCollision(player, m)) {
+                return attackEnemy();
             } else {
                 return false;
             }
@@ -545,6 +659,28 @@ public class Game extends GameCore
         handleScreenEdge(player, tmap, elapsed);
         handleScreenEdge(slime, tmap, elapsed);
         player.checkTileCollision(player, tmap);
+
+        if (levelComplete) {
+            level++;
+            Game level2 = new Game();
+            level2.init();
+            level2.run(false, screenWidth, screenHeight);
+        }
+    }
+
+    private boolean attackEnemy() {
+        if (attack) {
+            attack = false;
+            if (monsterHealth == 1){
+                score += 75;
+            }
+            else {
+                monsterHealth--;
+            }
+        } else {
+            playerHealth--;
+        }
+        return true;
     }
 
     /**
@@ -601,8 +737,16 @@ public class Game extends GameCore
             }
             case KeyEvent.VK_A: {
                 if (!dead && !gameStart) {
+                    player.setAnimation(attackAnim);
                     attack = true;
                 }
+                break;
+            }
+            case KeyEvent.VK_H: {
+                if (!dead && !gameStart) {
+                    help = true;
+                }
+                break;
             }
         }
     }
@@ -650,8 +794,10 @@ public class Game extends GameCore
                 }
                 break;
             }
-            case KeyEvent.VK_A: {
-                attack = false;
+            case KeyEvent.VK_H: {
+                if (!dead && !gameStart) {
+                    help = false;
+                }
             }
             default :  break;
 		}

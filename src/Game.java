@@ -12,6 +12,7 @@ import entities.Player.Player;
 import entities.Items.*;
 
 import javax.sound.sampled.*;
+import javax.swing.*;
 
 // Game demonstrates how we can override the GameCore class
 // to create our own 'game'. We usually need to implement at
@@ -37,6 +38,7 @@ public class Game extends GameCore
     float gravity = 0.001f;
     int playerHealth;
     int level = 1;
+    final int MAX_LEVELS = 2;
     int monsterHealth;
     int keysCollected;
     
@@ -133,6 +135,7 @@ public class Game extends GameCore
 
         this.setLocationRelativeTo(null);
         this.setUndecorated(true);
+        this.setBackground(Color.BLUE);
 
         // Load the tile map and print it out so we can check it is valid
         tmap.loadMap("maps", "level_" + level + ".txt");
@@ -371,6 +374,7 @@ public class Game extends GameCore
     public void draw(Graphics2D g) {
 
         if (!startClip.isRunning()) {
+            startClip.close();
             gameStart = false;
             mainClip.loop(Clip.LOOP_CONTINUOUSLY);
         }
@@ -429,7 +433,6 @@ public class Game extends GameCore
         int collKeysX = 150;
         for (Key k: collectedKeys) {
             k.setScale(1.5f);
-            System.out.println(collKeysX);
             k.setPosition(collKeysX, 42);
             collKeysX += k.getWidth() * j;
             k.drawTransformed(g);
@@ -438,6 +441,8 @@ public class Game extends GameCore
 
         // Apply offsets to tile map and draw it
         tmap.draw(g, xo, yo);
+
+        FontMetrics fm = g.getFontMetrics();
 
         if (gameStart || help) {
             String msg = "Press H to see these help messages,\n" +
@@ -454,7 +459,6 @@ public class Game extends GameCore
 
             g.setColor(Color.WHITE);
 
-            FontMetrics fm = g.getFontMetrics();
             int y = (getHeight()/4);
             for (String line : msg.split("\n")) {
                 int x = ((getWidth() - fm.stringWidth(line)) / 2);
@@ -466,17 +470,16 @@ public class Game extends GameCore
         // Show score and status information
         String scoreMsg = String.format("Score: %d", score + (totalCoinsCollected * 10));
         g.setColor(Color.WHITE);
-        g.drawString(scoreMsg, getWidth() - 80, 65);
+        g.drawString(scoreMsg, (getWidth() - fm.stringWidth(scoreMsg)) - 36, 48);
 
         if (dead) {
             mainClip.stop();
             overClip.loop(Clip.LOOP_CONTINUOUSLY);
-            FontMetrics metrics = g.getFontMetrics(getFont()); // Allows you to get the x and y length of a string to allow the string to be in the middle of the screen
             String msgDead1 = String.format("You died with a Score of: %d", score + (totalCoinsCollected * 10));
             String msgDead2 = "Press ESC to quit";
             g.setColor(Color.WHITE);
-            g.drawString(msgDead1, ((getWidth()/2) - (metrics.stringWidth(msgDead1) / 2)), getHeight() / 2);
-            g.drawString(msgDead2, ((getWidth()/2) - (metrics.stringWidth(msgDead2) / 2)), ((getHeight() / 2) + metrics.getHeight() + 5));
+            g.drawString(msgDead1, ((getWidth()/2) - (fm.stringWidth(msgDead1) / 2)), getHeight() / 2);
+            g.drawString(msgDead2, ((getWidth()/2) - (fm.stringWidth(msgDead2) / 2)), ((getHeight() / 2) + fm.getHeight() + 5));
             paused = true;
         }
     }
@@ -590,14 +593,6 @@ public class Game extends GameCore
         else if (!player.isOnGround() && player.getVelocityY() > 0)
             player.setAnimation(fallingAnim);
 
-        for (Slime s: slimes) {
-            s.checkTileCollision(s, tmap);
-        }
-
-        for (Monster m: monsters) {
-            m.checkTileCollision(m, tmap);
-        }
-
         coins.removeIf(c -> {
             if (boundingBoxCollision(player, c)) {
                 totalCoinsCollected++;
@@ -617,7 +612,7 @@ public class Game extends GameCore
             }
         });
 
-        if (boundingBoxCollision(player, chest) && keysCollected == 3) {
+        if (boundingBoxCollision(player, chest) && collectedKeys.size() == 3) {
             chest.playAnimation();
             chest.pauseAnimationAtFrame(3);
             levelComplete = true;
@@ -660,14 +655,25 @@ public class Game extends GameCore
 
         // Then check for any collisions that may have occurred
         handleScreenEdge(player, tmap, elapsed);
-        handleScreenEdge(slime, tmap, elapsed);
         player.checkTileCollision(player, tmap);
 
+        for (Slime s: slimes) {
+            s.checkTileCollision(s, tmap);
+            handleScreenEdge(s, tmap, elapsed);
+        }
+
+        for (Monster m: monsters) {
+            m.checkTileCollision(m, tmap);
+            handleScreenEdge(m, tmap, elapsed);
+        }
+
         if (levelComplete) {
-            level++;
-            Game level2 = new Game();
-            level2.init();
-            level2.run(false, screenWidth, screenHeight);
+            player.stopMoving();
+            player.setAnimation(standingAnim);
+            mainClip.close();
+            overClip.start();
+
+            nextLevel();
         }
     }
 
@@ -690,7 +696,7 @@ public class Game extends GameCore
      * Checks and handles collisions with the edge of the screen
      * 
      * @param s			The Sprite to check collisions for
-     * @param tmap		The tile map to check 
+     * @param tmap		The tile map to check
      * @param elapsed	How much time has gone by since the last call
      */
     public void handleScreenEdge(Sprite s, TileMap tmap, long elapsed) {
@@ -718,19 +724,19 @@ public class Game extends GameCore
                 break;
             }
             case KeyEvent.VK_LEFT: {
-                if (!dead && !gameStart) {
+                if (!dead && !gameStart && !levelComplete) {
                     moveLeft = true;
                 }
                 break;
             }
             case KeyEvent.VK_RIGHT: {
-                if (!dead && !gameStart) {
+                if (!dead && !gameStart && !levelComplete) {
                     moveRight = true;
                 }
                 break;
             }
             case KeyEvent.VK_SPACE: {
-                if (player.isOnGround() && !dead && !gameStart) {
+                if (player.isOnGround() && !dead && !gameStart && !levelComplete) {
                     player.setVelocityY(-0.4f);
                     player.setIsOnGround(false);
                     Sound jump = new Sound("sounds/jump.wav");
@@ -739,14 +745,14 @@ public class Game extends GameCore
                 break;
             }
             case KeyEvent.VK_A: {
-                if (!dead && !gameStart) {
+                if (!dead && !gameStart && !levelComplete) {
                     player.setAnimation(attackAnim);
                     attack = true;
                 }
                 break;
             }
             case KeyEvent.VK_H: {
-                if (!dead && !gameStart) {
+                if (!dead && !gameStart && !levelComplete) {
                     help = true;
                 }
                 break;
@@ -768,41 +774,53 @@ public class Game extends GameCore
 
 		// Switch statement instead of lots of ifs...
 		// Need to use break to prevent fall through.
-		switch (key)
-		{
-			case KeyEvent.VK_P : {
-                if (!dead && !gameStart) {
+        if (!levelComplete && !dead && !gameStart) {
+            switch (key) {
+                case KeyEvent.VK_P: {
                     paused = !paused;
+                    break;
                 }
-                break;
-            }
-            case KeyEvent.VK_R: {
-                if (!dead && !gameStart) {
+                case KeyEvent.VK_R: {
                     player.setPosition(tmap.getTileWidth() + player.getWidth(), tmap.getPixelHeight() - 128);
                     xo = 0;
+                    break;
                 }
-                break;
-            }
-            case KeyEvent.VK_LEFT: {
-                if (!dead && !gameStart) {
+                case KeyEvent.VK_LEFT: {
                     moveLeft = false;
                     player.stopMoving();
+                    break;
                 }
-                break;
-            }
-            case KeyEvent.VK_RIGHT: {
-                if (!dead && !gameStart) {
+                case KeyEvent.VK_RIGHT: {
                     moveRight = false;
                     player.stopMoving();
+                    break;
                 }
-                break;
-            }
-            case KeyEvent.VK_H: {
-                if (!dead && !gameStart) {
+                case KeyEvent.VK_H: {
                     help = false;
                 }
+                default:
+                    break;
             }
-            default :  break;
-		}
+        }
 	}
+
+	private void nextLevel() {
+
+        if (level < MAX_LEVELS) {
+            level++;
+        }
+
+        int result = JOptionPane.showConfirmDialog(this, "You have completed the level!\n\nDo you want to continue to the next level?", "Next Level?", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+
+        if (result == JOptionPane.YES_OPTION) {
+            overClip.close();
+            this.dispose();
+            Game nextLevel = new Game();
+            nextLevel.init();
+            nextLevel.run(false, screenWidth, screenHeight);
+        } else if (result == JOptionPane.NO_OPTION){
+            overClip.close();
+            stop();
+        }
+    }
 }
